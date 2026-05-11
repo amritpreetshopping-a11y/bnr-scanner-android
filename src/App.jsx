@@ -5,7 +5,7 @@ import TopTable      from './components/TopTable';
 import TradeCard     from './components/TradeCard';
 import ScanProgress  from './components/ScanProgress';
 import { analyseStock, computeNiftyPulse } from './utils/analysis';
-import { batchFetchStocks, fetchNiftySpot, fetchIntraday5m, fetchDaily } from './utils/fetcher';
+import { batchFetchStocks, fetchNiftySpot } from './utils/fetcher';
 import { UNIVERSE, NIFTY50 } from './utils/universe';
 
 const SCAN_INTERVAL_MS = 5 * 60 * 1000;
