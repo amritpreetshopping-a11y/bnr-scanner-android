@@ -7,6 +7,7 @@ import ScanProgress  from './components/ScanProgress';
 import { analyseStock, computeNiftyPulse } from './utils/analysis';
 import { batchFetchStocks, fetchNiftySpot } from './utils/fetcher';
 import { UNIVERSE, NIFTY50 } from './utils/universe';
+import { computeVWAPSeries } from './utils/indicators';
 
 const SCAN_INTERVAL_MS = 5 * 60 * 1000;
 const TABS = ['BnR Setups', 'Longs', 'Shorts', 'Trade Cards'];
@@ -72,12 +73,7 @@ export default function App() {
         // Always compute VWAP position for pulse (even if no tradeable setup)
         const todayC = intra5m.filter(c => new Date(c.time).toDateString() === todayStr);
         if (todayC.length >= 2) {
-          let cv = 0, ct = 0;
-          const vwapArr = todayC.map(c => {
-            const tp = (c.high + c.low + c.close) / 3;
-            cv += tp * c.volume; ct += c.volume;
-            return ct > 0 ? cv / ct : c.close;
-          });
+          const vwapArr   = computeVWAPSeries(todayC);
           const lastPrice = todayC[todayC.length - 1].close;
           const lastVwap  = vwapArr[vwapArr.length - 1];
           const isN50 = NIFTY50.includes(symbol);

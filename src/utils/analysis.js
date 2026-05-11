@@ -1,4 +1,4 @@
-import { ema, computeRSI, computeATR, computeVWAP } from './indicators';
+import { ema, computeRSI, computeATR, computeVWAP, computeVWAPSeries } from './indicators';
 
 const BNR_RETEST_BAND       = 0.004;
 const BNR_BREAK_MIN         = 0.002;
@@ -168,14 +168,9 @@ export function analyseStock(sym, candles5m, candlesDaily, pdh, pdl, pdc) {
   const vwapBand    = isEarly ? VWAP_ENTRY_BAND_EARLY : VWAP_ENTRY_BAND;
   const respectMin  = isEarly ? VWAP_RESPECT_MIN_EARLY : VWAP_RESPECT_MIN;
 
-  const vwapSeries = [];
-  let cumTPV = 0, cumVol = 0;
-  for (const c of todayC) {
-    const tp = (c.high + c.low + c.close) / 3;
-    cumTPV += tp * c.volume;
-    cumVol += c.volume;
-    vwapSeries.push(cumVol > 0 ? cumTPV / cumVol : c.close);
-  }
+  // Per-bar running VWAP series — used to count how many candles respected VWAP
+  // (matches Python bot: closes >= vwap_series.values).sum() / n_total)
+  const vwapSeries = computeVWAPSeries(todayC);
   const nAbove  = closes.filter((c, i) => c >= vwapSeries[i]).length;
   const nBelow  = closes.filter((c, i) => c <  vwapSeries[i]).length;
   const total   = nAbove + nBelow;

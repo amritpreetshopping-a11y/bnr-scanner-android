@@ -43,12 +43,28 @@ export function computeATR(candles, period = 14) {
   return atr;
 }
 
+// Returns the final VWAP scalar for today's candles.
+// Caller must pass only today's candles (already filtered) — no cross-day accumulation.
 export function computeVWAP(candles) {
   let cumTPV = 0, cumVol = 0;
   for (const c of candles) {
     const tp = (c.high + c.low + c.close) / 3;
-    cumTPV += tp * c.volume;
-    cumVol += c.volume;
+    cumTPV += tp * (c.volume || 0);
+    cumVol += (c.volume || 0);
   }
-  return cumVol > 0 ? cumTPV / cumVol : 0;
+  return cumVol > 0 ? cumTPV / cumVol : (candles.length ? candles[candles.length - 1].close : 0);
+}
+
+// Returns a per-bar running VWAP array (same length as candles).
+// Used to count how many candles closed above vs below the VWAP line at that moment —
+// this is what the Python bot calls "VWAP respect %".
+// Caller must pass only today's candles.
+export function computeVWAPSeries(candles) {
+  let cumTPV = 0, cumVol = 0;
+  return candles.map(c => {
+    const tp = (c.high + c.low + c.close) / 3;
+    cumTPV += tp * (c.volume || 0);
+    cumVol += (c.volume || 0);
+    return cumVol > 0 ? cumTPV / cumVol : c.close;
+  });
 }
