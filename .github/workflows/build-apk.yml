@@ -1,0 +1,79 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web app
+        run: npm run build
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Sync Capacitor
+        run: npx cap sync android
+
+      - name: Make gradlew executable
+        run: chmod +x android/gradlew
+
+      - name: Build debug APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: bnr-scanner-debug
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: BnR Scanner Build ${{ github.run_number }}
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+          body: |
+            ## BnR Scanner APK
+
+            ### Install on Samsung Galaxy Tab S9 FE
+            1. Download `app-debug.apk` from the assets below
+            2. Transfer to your tablet via USB or cloud
+            3. On tablet: Settings → Apps → Special app access → Install unknown apps → allow
+            4. Tap the APK to install
+
+            ### What's in this build
+            - Break-and-Retest (BnR) setup detection: PDH/PDL/ORH/ORL levels
+            - VWAP Respect filter with HTF (15m/1h) confirmation
+            - Nifty 50 breadth pulse (above/below VWAP count)
+            - Order flow detection (volume spike + candle analysis)
+            - Trade cards with Entry/SL/T1/T2/R:R and quantity sizing
+            - Live NSE data via public API
+            - Auto-refresh every 5 minutes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

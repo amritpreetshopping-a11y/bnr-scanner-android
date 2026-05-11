@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BnR Scanner</string>
+    <string name="title_activity_main">BnR Scanner</string>
+    <string name="package_name">com.trading.bnrscanner</string>
+    <string name="custom_url_scheme">com.trading.bnrscanner</string>
+</resources>
