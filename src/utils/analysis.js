@@ -1,9 +1,11 @@
 import { ema, computeRSI, computeATR, computeVWAP } from './indicators';
 
-const BNR_RETEST_BAND = 0.004;
-const BNR_BREAK_MIN   = 0.002;
-const VWAP_ENTRY_BAND = 1.0;
-const VWAP_RESPECT_MIN = 0.70;
+const BNR_RETEST_BAND       = 0.004;
+const BNR_BREAK_MIN         = 0.002;
+const VWAP_ENTRY_BAND       = 1.0;
+const VWAP_ENTRY_BAND_EARLY = 2.0;   // first hour — widen to match Python bot
+const VWAP_RESPECT_MIN      = 0.70;
+const VWAP_RESPECT_MIN_EARLY = 0.60; // first hour
 
 export function detectBnR(candles, pdh, pdl, pdc) {
   if (candles.length < 6) return null;
@@ -161,6 +163,11 @@ export function analyseStock(sym, candles5m, candlesDaily, pdh, pdl, pdc) {
   const vwap     = computeVWAP(todayC);
   const distPct  = (current - vwap) / vwap * 100;
 
+  // Use relaxed thresholds for first ~12 candles (first hour), matching Python bot
+  const isEarly = todayC.length < 12;
+  const vwapBand    = isEarly ? VWAP_ENTRY_BAND_EARLY : VWAP_ENTRY_BAND;
+  const respectMin  = isEarly ? VWAP_RESPECT_MIN_EARLY : VWAP_RESPECT_MIN;
+
   const vwapSeries = [];
   let cumTPV = 0, cumVol = 0;
   for (const c of todayC) {
@@ -175,8 +182,8 @@ export function analyseStock(sym, candles5m, candlesDaily, pdh, pdl, pdc) {
   const pctAbove = nAbove / total;
   const pctBelow = nBelow / total;
 
-  const isBullish = pctAbove >= VWAP_RESPECT_MIN && distPct >= 0 && distPct <= VWAP_ENTRY_BAND;
-  const isBearish = pctBelow >= VWAP_RESPECT_MIN && distPct >= -VWAP_ENTRY_BAND && distPct <= 0;
+  const isBullish = pctAbove >= respectMin && distPct >= 0 && distPct <= vwapBand;
+  const isBearish = pctBelow >= respectMin && distPct >= -vwapBand && distPct <= 0;
 
   const htf         = computeHTFBias(todayC);
   const htf15mBull  = htf['15m_bull'];

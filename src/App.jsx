@@ -60,25 +60,40 @@ export default function App() {
         setProgress({ current: cur, total: tot, symbol: sym, stage: 'intra' });
       });
 
+      // Pulse: computed from ALL fetched stocks regardless of whether analyseStock passes
+      // This matches Python bot which scans the full universe for above/below VWAP counts
+      const pulseInputs = [];
       const analysed = [];
+      const todayStr = new Date().toDateString();
+
       for (const { symbol, intra5m, daily, prevLevels } of rawResults) {
         if (!intra5m?.length) continue;
-        // Add today's candles from quote if available
+
+        // Always compute VWAP position for pulse (even if no tradeable setup)
+        const todayC = intra5m.filter(c => new Date(c.time).toDateString() === todayStr);
+        if (todayC.length >= 2) {
+          let cv = 0, ct = 0;
+          const vwapArr = todayC.map(c => {
+            const tp = (c.high + c.low + c.close) / 3;
+            cv += tp * c.volume; ct += c.volume;
+            return ct > 0 ? cv / ct : c.close;
+          });
+          const lastPrice = todayC[todayC.length - 1].close;
+          const lastVwap  = vwapArr[vwapArr.length - 1];
+          const isN50 = NIFTY50.includes(symbol);
+          pulseInputs.push({ symbol, _aboveVwap: lastPrice >= lastVwap, isN50 });
+        }
+
         const row = analyseStock(symbol, intra5m, daily, prevLevels.pdh, prevLevels.pdl, prevLevels.pdc);
         if (row) {
-          const todayC = intra5m.filter(c => new Date(c.time).toDateString() === new Date().toDateString());
-          const vwapSeries = (() => {
-            let cv = 0, ct = 0;
-            return todayC.map(c => { const tp = (c.high+c.low+c.close)/3; cv += tp*c.volume; ct += c.volume; return ct>0?cv/ct:c.close; });
-          })();
-          const lastVwap  = vwapSeries[vwapSeries.length - 1] ?? row.vwap;
-          analysed.push({ ...row, _aboveVwap: row.price >= lastVwap });
+          const lastVwap = pulseInputs.find(p => p.symbol === symbol)?._aboveVwap;
+          analysed.push({ ...row, _aboveVwap: lastVwap ?? (row.price >= row.vwap) });
         }
       }
 
-      // Nifty50 pulse: use NIFTY50 subset from results
-      const n50results = analysed.filter(r => NIFTY50.includes(r.symbol));
-      const pulseData  = computeNiftyPulse(n50results.length > 0 ? n50results : analysed);
+      // Prefer Nifty50 subset for pulse; fall back to full scan set
+      const n50inputs = pulseInputs.filter(p => p.isN50);
+      const pulseData = computeNiftyPulse(n50inputs.length >= 5 ? n50inputs : pulseInputs);
       setPulse(pulseData);
 
       const sorted    = [...analysed].sort((a, b) => b.rankScore - a.rankScore);
