@@ -5,6 +5,9 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -44,14 +47,14 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
 
-      - name: Upload APK
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: bnr-scanner-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
 
-      - name: Create Release
+      - name: Create GitHub Release with APK
         uses: softprops/action-gh-release@v2
         if: github.ref == 'refs/heads/main'
         with:
@@ -62,18 +65,18 @@ jobs:
             ## BnR Scanner APK
 
             ### Install on Samsung Galaxy Tab S9 FE
-            1. Download `app-debug.apk` from the assets below
-            2. Transfer to your tablet via USB or cloud
-            3. On tablet: Settings → Apps → Special app access → Install unknown apps → allow
-            4. Tap the APK to install
+            1. Download `app-debug.apk` from Assets below
+            2. Transfer to tablet via USB or Google Drive
+            3. On tablet: Settings → Apps → Special app access → Install unknown apps → allow Files
+            4. Tap the APK file to install
 
-            ### What's in this build
-            - Break-and-Retest (BnR) setup detection: PDH/PDL/ORH/ORL levels
+            ### Features
+            - Break-and-Retest (BnR) setup detection — PDH/PDL/ORH/ORL levels
             - VWAP Respect filter with HTF (15m/1h) confirmation
             - Nifty 50 breadth pulse (above/below VWAP count)
-            - Order flow detection (volume spike + candle analysis)
-            - Trade cards with Entry/SL/T1/T2/R:R and quantity sizing
-            - Live NSE data via public API
-            - Auto-refresh every 5 minutes
+            - Order flow detection (volume spike + candle body analysis)
+            - Trade cards with Entry / SL / T1 / T2 / R:R and quantity sizing
+            - Live NSE data via public API — auto-refresh every 5 minutes
+            - Dark AMOLED-optimised theme
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
